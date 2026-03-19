@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InboxZero — AI Email Clustering for Gmail</title>
+<meta name="description" content="Stop drowning in email. InboxZero uses AI to cluster, clean and organise your Gmail inbox in one click — right inside Gmail.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #080910;
+  --surf:     #0f1117;
+  --surf2:    #161920;
+  --surf3:    #1d2029;
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.13);
+  --text:     #e8eaf2;
+  --muted:    #6b7280;
+  --hint:     #374151;
+  --accent:   #5b6cff;
+  --accent2:  #7c8aff;
+  --green:    #2ecc8a;
+  --amber:    #f5a623;
+  --red:      #ff5e5e;
+  --purple:   #a78bfa;
+  --teal:     #2dd4bf;
+  --mono:     'JetBrains Mono', monospace;
+  --sans:     'Instrument Sans', sans-serif;
+  --display:  'Syne', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── NOISE TEXTURE ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 40px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,9,16,0.85);
+  backdrop-filter: blur(20px);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.nav-logo-mark {
+  width: 30px; height: 30px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.nav-logo-mark svg { width: 16px; height: 16px; }
+
+.nav-logo-name {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-family: var(--sans);
+  transition: color 0.2s;
+}
+
+.nav-links a:hover { color: var(--text); }
+
+.nav-cta {
+  background: var(--accent);
+  color: #fff !important;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px !important;
+  transition: background 0.2s !important;
+}
+
+.nav-cta:hover { background: var(--accent2) !important; color: #fff !important; }
+
+/* ── HERO ── */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120px 40px 80px;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* Animated grid background */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 100%);
+  pointer-events: none;
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surf2);
+  border: 1px solid var(--border2);
+  border-radius: 100px;
+  padding: 6px 14px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent2);
+  margin-bottom: 32px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.6s ease both;
+}
+
+.eyebrow-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.hero-title {
+  font-family: var(--display);
+  font-size: clamp(52px, 8vw, 96px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+
+.hero-title .accent-word {
+  color: var(--accent);
+  position: relative;
+  display: inline-block;
+}
+
+.hero-title .accent-word::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+  opacity: 0.3;
+  border-radius: 2px;
+}
+
+.hero-sub {
+  font-size: clamp(17px, 2.5vw, 21px);
+  color: var(--muted);
+  max-width: 560px;
+  line-height: 1.6;
+  margin-bottom: 48px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.6s 0.2s ease both;
+}
+
+/* ── WAITLIST FORM ── */
+.waitlist-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surf2);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 6px 6px 6px 20px;
+  max-width: 460px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.6s 0.3s ease both;
+  transition: border-color 0.2s;
+}
+
+.waitlist-form:focus-within {
+  border-color: var(--accent);
+}
+
+.waitlist-form input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--sans);
+  font-size: 15px;
+  color: var(--text);
+  min-width: 0;
+}
+
+.waitlist-form input::placeholder { color: var(--hint); }
+
+.waitlist-form button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  padding: 11px 22px;
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.waitlist-form button:hover {
+  background: var(--accent2);
+  transform: translateY(-1px);
+}
+
+.waitlist-form button:active { transform: translateY(0); }
+
+.hero-note {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--hint);
+  margin-top: 14px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.6s 0.35s ease both;
+}
+
+/* ── INBOX DEMO ── */
+.inbox-demo {
+  position: relative;
+  z-index: 1;
+  margin-top: 72px;
+  width: 100%;
+  max-width: 900px;
+  animation: fadeUp 0.8s 0.4s ease both;
+}
+
+.inbox-demo-wrap {
+  background: var(--surf);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+}
+
+/* Window chrome */
+.demo-titlebar {
+  background: var(--surf2);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.demo-dots {
+  display: flex; gap: 6px;
+}
+
+.demo-dot {
+  width: 11px; height: 11px;
+  border-radius: 50%;
+}
+
+.demo-dot:nth-child(1) { background: #ff5f57; }
+.demo-dot:nth-child(2) { background: #febc2e; }
+.demo-dot:nth-child(3) { background: #28c840; }
+
+.demo-url {
+  flex: 1;
+  background: var(--surf3);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Gmail + sidebar layout */
+.demo-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  min-height: 380px;
+}
+
+/* Gmail mock */
+.demo-gmail {
+  border-right: 1px solid var(--border);
+  padding: 20px;
+  overflow: hidden;
+}
+
+.demo-gmail-header {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+
+.demo-email-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  margin-bottom: 3px;
+  cursor: default;
+  transition: background 0.15s;
+  animation: slideIn 0.4s ease both;
+}
+
+.demo-email-row:hover { background: var(--surf2); }
+
+.demo-email-row.dimmed { opacity: 0.25; }
+.demo-email-row.highlighted { background: rgba(91,108,255,0.1); }
+
+.email-unread-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.email-from {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  width: 110px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.email-subject {
+  font-size: 12px;
+  color: var(--muted);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.email-date {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--hint);
+  flex-shrink: 0;
+}
+
+/* Sidebar mock */
+.demo-sidebar {
+  background: var(--surf);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-logo {
+  display: flex; align-items: center; gap: 7px;
+}
+
+.sidebar-logo-mark {
+  width: 22px; height: 22px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.sidebar-logo-name {
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sidebar-scan-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+
+/* Stats */
+.sidebar-stats {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.s-stat {
+  background: var(--surf2);
+  border-radius: 7px;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.s-stat-val {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.s-stat-label {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 3px;
+}
+
+/* Clusters */
+.sidebar-clusters {
+  flex: 1;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.s-cluster {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideIn 0.5s ease both;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+}
+
+.s-cluster:hover { border-color: var(--border2); background: var(--surf2); }
+.s-cluster.active { border-color: var(--accent); background: rgba(91,108,255,0.08); }
+
+.s-cluster-icon {
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.s-cluster-info { flex: 1; min-width: 0; }
+
+.s-cluster-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.s-cluster-count {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.s-cluster-check {
+  width: 14px; height: 14px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border2);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.s-cluster.active .s-cluster-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Action bar */
+.sidebar-actions {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+}
+
+.sidebar-action-label {
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 7px;
+  font-family: var(--mono);
+}
+
+.sidebar-action-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.s-act-btn {
+  padding: 7px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surf2);
+  color: var(--muted);
+  font-size: 11px;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.s-act-btn:hover { color: var(--text); border-color: var(--border2); }
+.s-act-btn.danger:hover { color: var(--red); border-color: var(--red); }
+
+/* ── FEATURES ── */
+.features {
+  padding: 120px 40px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-family: var(--display);
+  font-size: clamp(36px, 5vw, 56px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.section-sub {
+  font-size: 18px;
+  color: var(--muted);
+  max-width: 500px;
+  line-height: 1.6;
+  margin-bottom: 64px;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.feature-card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.feature-card:hover {
+  border-color: var(--border2);
+  transform: translateY(-2px);
+}
+
+.feature-card:hover::before { opacity: 1; }
+
+.feature-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  margin-bottom: 20px;
+}
+
+.feature-title {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.feature-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.feature-tag {
+  display: inline-block;
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 100px;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+}
+
+/* ── HOW IT WORKS ── */
+.how {
+  padding: 0 40px 120px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.steps-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  position: relative;
+}
+
+.steps-row::before {
+  content: '';
+  position: absolute;
+  top: 28px;
+  left: calc(16.67% + 14px);
+  right: calc(16.67% + 14px);
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent), var(--purple), var(--teal));
+  opacity: 0.4;
+}
+
+.step-item {
+  padding: 0 24px;
+  text-align: center;
+}
+
+.step-num {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: 1px solid var(--border2);
+  background: var(--surf);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--accent);
+  margin: 0 auto 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.step-title {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.step-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* ── STATS ── */
+.stats-section {
+  padding: 80px 40px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surf);
+}
+
+.stats-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 40px;
+}
+
+.stat-item { text-align: center; }
+
+.stat-val {
+  font-family: var(--display);
+  font-size: clamp(36px, 5vw, 52px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.stat-val span { color: var(--accent); }
+
+.stat-label {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ── PRICING ── */
+.pricing {
+  padding: 120px 40px;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.pricing-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 56px;
+  text-align: left;
+}
+
+.pricing-card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  transition: border-color 0.2s;
+}
+
+.pricing-card.pro {
+  border-color: var(--accent);
+  background: var(--surf2);
+  position: relative;
+  overflow: hidden;
+}
+
+.pricing-card.pro::before {
+  content: 'Most popular';
+  position: absolute;
+  top: 16px; right: 16px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+  padding: 3px 10px;
+  border-radius: 100px;
+}
+
+.plan-name {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.plan-price {
+  font-family: var(--display);
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.plan-price sup {
+  font-size: 24px;
+  font-weight: 500;
+  vertical-align: top;
+  margin-top: 8px;
+  display: inline-block;
+}
+
+.plan-price sub {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.plan-desc {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.5;
+}
+
+.plan-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.plan-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.plan-features li::before {
+  content: '';
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: rgba(46,204,138,0.15);
+  border: 1px solid var(--green);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 5l2 2 4-4' stroke='%232ecc8a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.plan-features li.dim { color: var(--muted); }
+.plan-features li.dim::before {
+  background: var(--surf3);
+  border-color: var(--border);
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 5h4' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.plan-btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 10px;
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.plan-btn.free {
+  background: var(--surf3);
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+
+.plan-btn.free:hover { background: var(--surf2); border-color: var(--border2); }
+
+.plan-btn.paid {
+  background: var(--accent);
+  color: #fff;
+}
+
+.plan-btn.paid:hover { background: var(--accent2); transform: translateY(-1px); }
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 48px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.footer-logo {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none;
+}
+
+.footer-logo-name {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.footer-links {
+  display: flex;
+  gap: 28px;
+  list-style: none;
+}
+
+.footer-links a {
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover { color: var(--text); }
+
+.footer-copy {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--hint);
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── SUCCESS STATE ── */
+.success-msg {
+  display: none;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--green);
+  margin-top: 12px;
+  animation: fadeUp 0.4s ease;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  nav { padding: 14px 20px; }
+  .nav-links { display: none; }
+  .hero { padding: 100px 20px 60px; }
+  .features, .how, .pricing { padding-left: 20px; padding-right: 20px; }
+  .features-grid { grid-template-columns: 1fr; }
+  .steps-row { grid-template-columns: 1fr; }
+  .steps-row::before { display: none; }
+  .stats-inner { grid-template-columns: repeat(2,1fr); }
+  .pricing-cards { grid-template-columns: 1fr; }
+  .demo-body { grid-template-columns: 1fr; }
+  .demo-sidebar { display: none; }
+  footer { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-mark">
+      <svg viewBox="0 0 16 16" fill="none">
+        <path d="M3 5l5 4 5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 8.5l5 4 5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+      </svg>
+    </div>
+    <span class="nav-logo-name">InboxZero</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#waitlist" class="nav-cta">Join waitlist</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">
+    <span class="eyebrow-dot"></span>
+    Now in private beta — 312 on waitlist
+  </div>
+
+  <h1 class="hero-title">
+    Your inbox,<br><span class="accent-word">finally</span> under control
+  </h1>
+
+  <p class="hero-sub">
+    InboxZero uses AI to cluster, clean and organise your Gmail in one click — right inside Gmail. No app switching. No setup. Just a clean inbox.
+  </p>
+
+  <div class="waitlist-form" id="waitlist">
+    <input type="email" id="emailInput" placeholder="Enter your email address" autocomplete="email">
+    <button onclick="joinWaitlist()">Join waitlist</button>
+  </div>
+  <div class="success-msg" id="successMsg">
+    You're on the list. We'll email you when it launches.
+  </div>
+  <p class="hero-note">Free to join · No spam · Unsubscribe anytime</p>
+
+  <!-- INBOX DEMO -->
+  <div class="inbox-demo">
+    <div class="inbox-demo-wrap">
+      <div class="demo-titlebar">
+        <div class="demo-dots">
+          <div class="demo-dot"></div>
+          <div class="demo-dot"></div>
+          <div class="demo-dot"></div>
+        </div>
+        <div class="demo-url">mail.google.com — Inbox (847)</div>
+      </div>
+      <div class="demo-body">
+        <!-- Gmail emails list -->
+        <div class="demo-gmail">
+          <div class="demo-gmail-header">
+            <span>Primary</span>
+            <span style="color:var(--accent);font-size:11px">847 emails</span>
+          </div>
+          <div class="demo-email-row highlighted" style="animation-delay:0.1s">
+            <div class="email-unread-dot" style="background:var(--accent)"></div>
+            <div class="email-from">Sarah K.</div>
+            <div class="email-subject">Re: Q4 budget review — need your sign-off</div>
+            <div class="email-date">2h</div>
+          </div>
+          <div class="demo-email-row dimmed" style="animation-delay:0.15s">
+            <div class="email-unread-dot" style="background:var(--teal)"></div>
+            <div class="email-from">Morning Brew</div>
+            <div class="email-subject">The fintech shake-up nobody saw coming</div>
+            <div class="email-date">8h</div>
+          </div>
+          <div class="demo-email-row dimmed" style="animation-delay:0.2s">
+            <div class="email-unread-dot" style="background:var(--amber)"></div>
+            <div class="email-from">Amazon</div>
+            <div class="email-subject">Your order has shipped — arrives Thursday</div>
+            <div class="email-date">1h</div>
+          </div>
+          <div class="demo-email-row highlighted" style="animation-delay:0.25s">
+            <div class="email-unread-dot" style="background:var(--accent)"></div>
+            <div class="email-from">Marcus L.</div>
+            <div class="email-subject">Re: Design handoff notes from Figma</div>
+            <div class="email-date">3h</div>
+          </div>
+          <div class="demo-email-row dimmed" style="animation-delay:0.3s">
+            <div class="email-unread-dot" style="background:var(--red)"></div>
+            <div class="email-from">james@acme.io</div>
+            <div class="email-subject">Quick question about your workflow...</div>
+            <div class="email-date">Today</div>
+          </div>
+          <div class="demo-email-row dimmed" style="animation-delay:0.35s">
+            <div class="email-unread-dot" style="background:var(--purple)"></div>
+            <div class="email-from">Figma</div>
+            <div class="email-subject">50% off annual plan — today only</div>
+            <div class="email-date">6h</div>
+          </div>
+          <div class="demo-email-row highlighted" style="animation-delay:0.4s">
+            <div class="email-unread-dot" style="background:var(--accent)"></div>
+            <div class="email-from">Priya M.</div>
+            <div class="email-subject">Sprint planning tomorrow at 10am — agenda inside</div>
+            <div class="email-date">5h</div>
+          </div>
+          <div class="demo-email-row dimmed" style="animation-delay:0.45s">
+            <div class="email-unread-dot" style="background:var(--teal)"></div>
+            <div class="email-from">TLDR</div>
+            <div class="email-subject">AI news you missed this week</div>
+            <div class="email-date">Yesterday</div>
+          </div>
+        </div>
+
+        <!-- InboxZero sidebar -->
+        <div class="demo-sidebar">
+          <div class="sidebar-header">
+            <div class="sidebar-logo">
+              <div class="sidebar-logo-mark">IZ</div>
+              <span class="sidebar-logo-name">InboxZero</span>
+            </div>
+            <button class="sidebar-scan-btn">Scan</button>
+          </div>
+
+          <div class="sidebar-stats">
+            <div class="s-stat">
+              <div class="s-stat-val" style="color:var(--red)">847</div>
+              <div class="s-stat-label">Total</div>
+            </div>
+            <div class="s-stat">
+              <div class="s-stat-val" style="color:var(--amber)">612</div>
+              <div class="s-stat-label">Clutter</div>
+            </div>
+            <div class="s-stat">
+              <div class="s-stat-val" style="color:var(--green)">34</div>
+              <div class="s-stat-label">Action</div>
+            </div>
+          </div>
+
+          <div class="sidebar-clusters">
+            <div class="s-cluster active" style="animation-delay:0.1s">
+              <div class="s-cluster-icon" style="background:rgba(91,108,255,0.15)">💼</div>
+              <div class="s-cluster-info">
+                <div class="s-cluster-name">Work threads</div>
+              </div>
+              <div class="s-cluster-count" style="color:var(--accent)">34</div>
+              <div class="s-cluster-check">
+                <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5l2 2L7.5 2" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+            <div class="s-cluster" style="animation-delay:0.15s">
+              <div class="s-cluster-icon" style="background:rgba(61,212,191,0.12)">📰</div>
+              <div class="s-cluster-info">
+                <div class="s-cluster-name">Newsletters</div>
+              </div>
+              <div class="s-cluster-count" style="color:var(--teal)">241</div>
+              <div class="s-cluster-check"></div>
+            </div>
+            <div class="s-cluster" style="animation-delay:0.2s">
+              <div class="s-cluster-icon" style="background:rgba(245,166,35,0.12)">🧾</div>
+              <div class="s-cluster-info">
+                <div class="s-cluster-name">Receipts</div>
+              </div>
+              <div class="s-cluster-count" style="color:var(--amber)">187</div>
+              <div class="s-cluster-check"></div>
+            </div>
+            <div class="s-cluster" style="animation-delay:0.25s">
+              <div class="s-cluster-icon" style="background:rgba(255,94,94,0.1)">📣</div>
+              <div class="s-cluster-info">
+                <div class="s-cluster-name">Cold outreach</div>
+              </div>
+              <div class="s-cluster-count" style="color:var(--red)">89</div>
+              <div class="s-cluster-check"></div>
+            </div>
+            <div class="s-cluster" style="animation-delay:0.3s">
+              <div class="s-cluster-icon" style="background:rgba(167,139,250,0.1)">🎉</div>
+              <div class="s-cluster-info">
+                <div class="s-cluster-name">Promotions</div>
+              </div>
+              <div class="s-cluster-count" style="color:var(--purple)">101</div>
+              <div class="s-cluster-check"></div>
+            </div>
+          </div>
+
+          <div class="sidebar-actions">
+            <div class="sidebar-action-label">1 cluster · 34 emails selected</div>
+            <div class="sidebar-action-btns">
+              <button class="s-act-btn">Archive</button>
+              <button class="s-act-btn danger">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="section-label">What it does</div>
+  <h2 class="section-title">Everything your inbox<br>needs. Nothing it doesn't.</h2>
+  <p class="section-sub">Built for people who get too many emails and have spent too much time trying to deal with them.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(91,108,255,0.12)">🧠</div>
+      <div class="feature-title">AI clustering</div>
+      <div class="feature-desc">Every email is classified by intent — work, newsletters, receipts, cold outreach, promotions — not just sender or date.</div>
+      <span class="feature-tag">Claude AI</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(46,204,138,0.12)">⚡</div>
+      <div class="feature-title">One-click bulk clean</div>
+      <div class="feature-desc">Select a cluster, click Archive or Delete. Wipe 200 newsletters in one action. No manual selection needed.</div>
+      <span class="feature-tag">Gmail API</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(61,212,191,0.12)">💬</div>
+      <div class="feature-title">Natural language</div>
+      <div class="feature-desc">Type "delete all cold outreach I never replied to" and it's done. No filters, no rules, no menus to navigate.</div>
+      <span class="feature-tag">Command bar</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(245,166,35,0.12)">🔒</div>
+      <div class="feature-title">Privacy first</div>
+      <div class="feature-desc">Only email subjects and sender names are processed. No full email content ever leaves your browser. No data sold.</div>
+      <span class="feature-tag">Local processing</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(255,94,94,0.1)">🛑</div>
+      <div class="feature-title">Unsubscribe hunter</div>
+      <div class="feature-desc">Automatically surfaces every sender with an unsubscribe link that you've never replied to. Cut the noise at the source.</div>
+      <span class="feature-tag">Smart detection</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(167,139,250,0.1)">📍</div>
+      <div class="feature-title">Lives inside Gmail</div>
+      <div class="feature-desc">No separate app to open, no dashboard to check. The sidebar lives inside Gmail — right where you already are.</div>
+      <span class="feature-tag">Chrome extension</span>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="section-label">How it works</div>
+  <h2 class="section-title">Three steps to a clean inbox</h2>
+  <p class="section-sub" style="margin-bottom:56px">From install to clean inbox in under 3 minutes.</p>
+
+  <div class="steps-row">
+    <div class="step-item">
+      <div class="step-num">01</div>
+      <div class="step-title">Install the extension</div>
+      <div class="step-desc">Add InboxZero from the Chrome Web Store. One click. No account needed to get started.</div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">02</div>
+      <div class="step-title">Connect Gmail</div>
+      <div class="step-desc">Authorise with your Google account. InboxZero only reads what it needs — subjects and senders. Nothing else.</div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">03</div>
+      <div class="step-title">Scan and clean</div>
+      <div class="step-desc">Click Scan. AI clusters your inbox in seconds. Select what to clean. Done. Your inbox is under control.</div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-section">
+  <div class="stats-inner">
+    <div class="stat-item">
+      <div class="stat-val">4.8<span>B</span></div>
+      <div class="stat-label">Email users worldwide</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">120</div>
+      <div class="stat-label">Emails per person per day</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">28<span>%</span></div>
+      <div class="stat-label">Of workday spent on email</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">&lt;3<span>min</span></div>
+      <div class="stat-label">To clean 800 emails with InboxZero</div>
+    </div>
+  </div>
+</div>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="section-label">Pricing</div>
+  <h2 class="section-title">Simple, honest pricing</h2>
+  <p class="section-sub" style="margin:16px auto 0">Start free. Upgrade when you need more. No tricks.</p>
+
+  <div class="pricing-cards">
+    <div class="pricing-card">
+      <div class="plan-name">Free — Spark</div>
+      <div class="plan-price">$0</div>
+      <div class="plan-desc">Everything you need to see if InboxZero is right for you. No credit card required.</div>
+      <ul class="plan-features">
+        <li>3 AI clusters per inbox</li>
+        <li>50 emails bulk cleaned per day</li>
+        <li>5 unsubscribes per week</li>
+        <li>Basic command bar</li>
+        <li class="dim">Unlimited clusters</li>
+        <li class="dim">Unlimited bulk clean</li>
+      </ul>
+      <button class="plan-btn free" onclick="joinWaitlist()">Join waitlist — it's free</button>
+    </div>
+
+    <div class="pricing-card pro">
+      <div class="plan-name">Pro</div>
+      <div class="plan-price"><sup>$</sup>6<sub>/mo</sub></div>
+      <div class="plan-desc">For people serious about inbox zero. Unlimited everything, advanced AI, priority support.</div>
+      <ul class="plan-features">
+        <li>Unlimited AI clusters</li>
+        <li>Unlimited bulk clean</li>
+        <li>Unlimited unsubscribes</li>
+        <li>Full natural language commands</li>
+        <li>Priority support</li>
+        <li>Early access to new features</li>
+      </ul>
+      <button class="plan-btn paid" onclick="joinWaitlist()">Join waitlist for Pro</button>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <a href="#" class="footer-logo">
+    <div class="nav-logo-mark">
+      <svg viewBox="0 0 16 16" fill="none">
+        <path d="M3 5l5 4 5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 8.5l5 4 5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+      </svg>
+    </div>
+    <span class="footer-logo-name">InboxZero</span>
+  </a>
+
+  <ul class="footer-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#privacy" onclick="showPrivacy()">Privacy policy</a></li>
+    <li><a href="mailto:hello@inboxzero.app">Contact</a></li>
+  </ul>
+
+  <div class="footer-copy">© 2026 InboxZero. All rights reserved.</div>
+</footer>
+
+<script>
+function joinWaitlist() {
+  const input = document.getElementById('emailInput');
+  const email = input.value.trim();
+  const success = document.getElementById('successMsg');
+
+  if (!email || !email.includes('@')) {
+    input.style.borderBottom = '1px solid var(--red)';
+    input.placeholder = 'Please enter a valid email';
+    setTimeout(() => {
+      input.style.borderBottom = '';
+      input.placeholder = 'Enter your email address';
+    }, 2000);
+    return;
+  }
+
+  // Here you'd POST to your backend / Beehiiv / Mailchimp API
+  console.log('Waitlist signup:', email);
+
+  input.value = '';
+  document.querySelector('.waitlist-form').style.display = 'none';
+  success.style.display = 'block';
+}
+
+document.getElementById('emailInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') joinWaitlist();
+});
+
+// Animate clusters on scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.style.opacity = '1';
+      entry.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.feature-card, .step-item, .stat-item, .pricing-card').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(20px)';
+  el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+  observer.observe(el);
+});
+
+// Stagger feature cards
+document.querySelectorAll('.feature-card').forEach((el, i) => {
+  el.style.transitionDelay = `${i * 0.08}s`;
+});
+
+document.querySelectorAll('.step-item').forEach((el, i) => {
+  el.style.transitionDelay = `${i * 0.1}s`;
+});
+
+document.querySelectorAll('.stat-item').forEach((el, i) => {
+  el.style.transitionDelay = `${i * 0.07}s`;
+});
+</script>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- PRIVACY POLICY PAGE (hidden by default)            -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="privacyPage" style="display:none">
+
+<!-- Privacy Nav -->
+<nav>
+  <a href="#" class="nav-logo" onclick="showMain()">
+    <div class="nav-logo-mark">
+      <svg viewBox="0 0 16 16" fill="none">
+        <path d="M3 5l5 4 5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 8.5l5 4 5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+      </svg>
+    </div>
+    <span class="nav-logo-name">InboxZero</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#" onclick="showMain()">← Back to home</a></li>
+  </ul>
+</nav>
+
+<div style="max-width:780px;margin:0 auto;padding:120px 40px 80px;position:relative;z-index:1">
+
+  <!-- Header -->
+  <div style="margin-bottom:56px">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px">Legal</div>
+    <h1 style="font-family:var(--display);font-size:clamp(40px,6vw,64px);font-weight:800;letter-spacing:-0.04em;color:var(--text);line-height:1.05;margin-bottom:20px">Privacy Policy</h1>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <span style="font-family:var(--mono);font-size:12px;color:var(--muted)">Effective date: <strong style="color:var(--text)">March 2026</strong></span>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--muted)">Last updated: <strong style="color:var(--text)">March 2026</strong></span>
+    </div>
+    <p style="margin-top:24px;font-size:17px;color:var(--muted);line-height:1.7;border-left:3px solid var(--accent);padding-left:20px">
+      InboxZero is built on a simple principle: your email is private. We access only what we need, process it locally where possible, and never sell your data. This policy explains exactly what we do — and what we don't do.
+    </p>
+  </div>
+
+  <!-- Quick summary boxes -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:64px">
+    <div style="background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:20px">
+      <div style="font-size:22px;margin-bottom:10px">🔒</div>
+      <div style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">No body content</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.5">We only read subject lines and sender names. Never full email content.</div>
+    </div>
+    <div style="background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:20px">
+      <div style="font-size:22px;margin-bottom:10px">🚫</div>
+      <div style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">No data selling</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.5">We never sell, rent, or share your personal data with third parties.</div>
+    </div>
+    <div style="background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:20px">
+      <div style="font-size:22px;margin-bottom:10px">🗑️</div>
+      <div style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">Delete anytime</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.5">Disconnect the extension at any time. All cached data is immediately removed.</div>
+    </div>
+  </div>
+
+  <!-- Sections -->
+  <div style="display:flex;flex-direction:column;gap:48px">
+
+    <div class="pp-section">
+      <h2 class="pp-h2">1. Who we are</h2>
+      <p class="pp-p">InboxZero is a Chrome extension built by an independent developer. The extension helps Gmail users organise and clean their inbox using AI-powered email clustering. For questions about this policy, contact us at <a href="mailto:hello@inboxzero.app" style="color:var(--accent)">hello@inboxzero.app</a>.</p>
+    </div>
+
+    <div class="pp-section">
+      <h2 class="pp-h2">2. What data we access</h2>
+      <p class="pp-p">InboxZero accesses your Gmail account through the official Google Gmail API using OAuth 2.0. We request the following permissions:</p>
+
+      <div style="margin:20px 0;background:var(--surf2);border:1px solid var(--border2);border-radius:12px;overflow:hidden">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Scope</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em">What we read</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em">What we never read</div>
+        </div>
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div style="font-family:var(--mono);font-size:12px;color:var(--accent)">gmail.readonly</div>
+          <div style="font-size:13px;color:var(--text)">Subject lines, sender name, sender email, date</div>
+          <div style="font-size:13px;color:var(--muted)">Email body, attachments, CC/BCC lists</div>
+        </div>
+        <div style="padding:14px 20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div style="font-family:var(--mono);font-size:12px;color:var(--accent)">gmail.modify</div>
+          <div style="font-size:13px;color:var(--text)">Message IDs only (to archive/delete when you request it)</div>
+          <div style="font-size:13px;color:var(--muted)">We never modify emails without explicit user action</div>
+        </div>
+      </div>
+
+      <p class="pp-p">We access email metadata only when you click the Scan button. We do not monitor your inbox in the background or access emails automatically.</p>
+    </div>
+
+    <div class="pp-section">
+      <h2 class="pp-h2">3. How we process your data</h2>
+      <p class="pp-p">Email subject lines and sender names are sent to the Claude AI API (operated by Anthropic, Inc.) for classification into clusters. This is the only external service that receives any part of your email data.</p>
+      <p class="pp-p" style="margin-top:14px">Specifically:</p>
+      <ul class="pp-ul">
+        <li>We send: email subject lines and sender names (no body content, no attachments)</li>
+        <li>Anthropic receives this data to perform classification and returns cluster labels</li>
+        <li>Anthropic's privacy policy applies to this processing: <a href="https://www.anthropic.com/privacy" style="color:var(--accent)" target="_blank">anthropic.com/privacy</a></li>
+        <li>If you have not configured a Claude API key, all clustering is done locally in your browser using keyword matching — no data is sent externally</li>
+      </ul>
+      <p class="pp-p" style="margin-top:14px">Cluster results are cached temporarily in your browser's local storage (Chrome Storage API) to avoid repeated API calls. This cache is stored on your device only and is cleared when you disconnect the extension.</p>
+    </div>
+
+    <div class="pp-section">
+      <h2 class="pp-h2">4. What we store</h2>
+      <ul class="pp-ul">
+        <li><strong style="color:var(--text)">On your device (Chrome Storage):</strong> Your cluster cache, your preferences, and your Pro licence status. This data never leaves your device except as described in section 3.</li>
+        <li><strong style="color:var(--text)">On our servers (if you create an account):</strong> Your email address, account creation date, and subscription status. We do not store any email data on our servers.</li>
+        <li><strong style="color:var(--text)">We do not store:</strong> Email subject lines, sender names, email content, or any Gmail data on our servers at any time.</li>
+      </ul>
+    </div>
+
+    <div class="pp-section">
+      <h2 class="pp-h2">5. Gmail API limited use disclosure</h2>
+      <p class="pp-p">InboxZero's use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" style="color:var(--accent)" target="_blank">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+      <p class="pp-p" style="margin-top:14px">Specifically, we confirm that:</p>
+      <ul class="pp-ul">
+        <li>We do not use Gmail data to develop, improve, or train generalised AI or ML models</li>
+        <li>We do not allow humans to read your Gmail data unless you explicitly grant permission or it is required for security purposes</li>
+        <li>We do not transfer Gmail data to third parties except as necessary to provide the InboxZero service (i.e. sending subject lines to Claude API for classification)</li>
+        <li>We do not use Gmail data for serving advertisements</li>
+        <li>Our use of Gmail data is limited to providing and improving the InboxZero email clustering feature</li>
+      </ul>
+    </div>
+
+    <div class="pp-section">
+      <h2 class="pp-h2">6. Data retention and deletion</h2>
+      <ul class="pp-ul">
+        <li><strong style="color:var(--text)">Disconnect the extension:</strong> All locally cached data is deleted immediately. Revoke Gmail access via your <a href="https://myaccount.google.com/permissions" style="color:var(--accent)" target="_blank">Google account permissions page</a>.</li>
+        <li><strong style="color:var(--text)">Delete your account:</strong> Email us at <a href="mailto:hello@inboxzero.app" style="color:var(--accent)">hello@inboxzero.app</a> and we will permanently delete all account data within 30 days.</li>
+        <li><strong style="color:var(--text)">Waitlist data:</strong> If you joined our waitlist, your email address is stored only for launch notification. You can unsubscribe at any time using the link in any email we send.</li>
+      </ul>
+    </div>
+
+    <div class="pp-section">
+      <h2 class="pp-h2">7. Third-party services</h2>
+      <div style="background:var(--surf2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:8px">
+        <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 2fr;gap:16px">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Service</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Purpose &amp; data shared</div>
+        </div>
+        <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 2fr;gap:16px">
+          <div style="font-size:13px;color:var(--text);font-weight:500">Anthropic Claude API</div>
+          <div style="font-size:13px;color:var(--muted)">AI email classification. Receives: subject lines &amp; sender names only.</div>
+        </div>
+        <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 2fr;gap:16px">
+          <div style="font-size:13px;color:var(--text);font-weight:500">Lemon Squeezy</div>
+          <div style="font-size:13px;color:var(--muted)">Payment processing for Pro subscriptions. We never see your full card number.</div>
+        </div>
+        <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 2fr;gap:16px">
+          <div style="font-size:13px;color:var(--text);font-weight:500">Supabase</div>
+          <div style="font-size:13px;color:var(--muted)">User account storage (email address, subscription status). No email data stored.</div>
+        </div>
+        <div style="padding:12px 20px;display:grid;grid-template-columns:1fr 2fr;gap:16px">
+          <div style="font-size:13px;color:var(--text);font-weight:500">PostHog</div>
+          <div style="font-size:13px;color:var(--muted)">Anonymous product analytics (install events, button clicks). No PII collected.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pp-section">
+      <h2 class="pp-h2">8. Your rights</h2>
+      <p class="pp-p">Depending on your location, you may have the following rights under GDPR, CCPA, or other applicable privacy laws:</p>
+      <ul class="pp-ul">
+        <li><strong style="color:var(--text)">Access:</strong> Request a copy of the personal data we hold about you</li>
+        <li><strong style="color:var(--text)">Correction:</strong> Ask us to correct inaccurate personal data</li>
+        <li><strong style="color:var(--text)">Deletion:</strong> Request deletion of your personal data</li>
+        <li><strong style="color:var(--text)">Portability:</strong> Receive your data in a machine-readable format</li>
+        <li><strong style="color:var(--text)">Objection:</strong> Object to certain types of processing</li>
+      </ul>
+      <p class="pp-p" style="margin-top:14px">To exercise any of these rights, email <a href="mailto:hello@inboxzero.app" style="color:var(--accent)">hello@inboxzero.app</a>. We will respond within 30 days.</p>
+    </div>
+
+    <div class="pp-section">
+      <h2 class="pp-h2">9. Security</h2>
+      <p class="pp-p">We use OAuth 2.0 (the industry standard) for Gmail authentication. Access tokens are stored in Chrome's secure identity API and are never exposed to web pages. All communication with the Gmail API and Claude API occurs over HTTPS. We do not store Gmail access tokens on our servers.</p>
+    </div>
+
+    <div class="pp-section">
+      <h2 class="pp-h2">10. Children</h2>
+      <p class="pp-p">InboxZero is not directed at children under 13. We do not knowingly collect personal data from children. If you believe a child has provided us with personal data, contact us and we will delete it promptly.</p>
+    </div>
+
+    <div class="pp-section">
+      <h2 class="pp-h2">11. Changes to this policy</h2>
+      <p class="pp-p">If we make material changes to this policy, we will notify users via email (if you have an account) and update the effective date at the top of this page. Continued use of InboxZero after changes take effect constitutes acceptance of the revised policy.</p>
+    </div>
+
+    <div class="pp-section">
+      <h2 class="pp-h2">12. Contact</h2>
+      <div style="background:var(--surf2);border:1px solid var(--border2);border-radius:14px;padding:28px;margin-top:8px">
+        <div style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px">Questions about this policy?</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px">We are happy to answer any questions about how we handle your data. We aim to respond within 2 business days.</p>
+        <a href="mailto:hello@inboxzero.app" style="display:inline-block;background:var(--accent);color:#fff;text-decoration:none;padding:11px 24px;border-radius:9px;font-family:var(--display);font-size:14px;font-weight:700">hello@inboxzero.app</a>
+      </div>
+    </div>
+
+  </div><!-- end sections -->
+
+</div><!-- end privacy inner -->
+
+<!-- Privacy Footer -->
+<footer>
+  <a href="#" class="footer-logo" onclick="showMain()">
+    <div class="nav-logo-mark">
+      <svg viewBox="0 0 16 16" fill="none">
+        <path d="M3 5l5 4 5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 8.5l5 4 5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+      </svg>
+    </div>
+    <span class="footer-logo-name">InboxZero</span>
+  </a>
+  <ul class="footer-links">
+    <li><a href="#" onclick="showMain()">← Back to home</a></li>
+    <li><a href="mailto:hello@inboxzero.app">Contact</a></li>
+  </ul>
+  <div class="footer-copy">© 2026 InboxZero. All rights reserved.</div>
+</footer>
+
+</div><!-- end privacyPage -->
+
+<style>
+.pp-h2 {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.pp-p {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.75;
+}
+.pp-ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+.pp-ul li {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.65;
+  padding-left: 20px;
+  position: relative;
+}
+.pp-ul li::before {
+  content: '–';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-family: var(--mono);
+}
+</style>
+
+</body>
+</html>
