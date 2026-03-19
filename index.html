@@ -1018,6 +1018,8 @@ footer {
 </head>
 <body>
 
+<div id="mainPage">
+
 <!-- NAV -->
 <nav>
   <a href="#" class="nav-logo">
@@ -1359,7 +1361,7 @@ footer {
   <ul class="footer-links">
     <li><a href="#features">Features</a></li>
     <li><a href="#pricing">Pricing</a></li>
-    <li><a href="#privacy" onclick="showPrivacy()">Privacy policy</a></li>
+    <li><a href="#privacy" onclick="showPrivacy(event)">Privacy policy</a></li>
     <li><a href="mailto:hello@inboxzero.app">Contact</a></li>
   </ul>
 
@@ -1423,7 +1425,40 @@ document.querySelectorAll('.step-item').forEach((el, i) => {
 document.querySelectorAll('.stat-item').forEach((el, i) => {
   el.style.transitionDelay = `${i * 0.07}s`;
 });
+
+function showPrivacy(e) {
+  if (e) e.preventDefault();
+  document.getElementById('mainPage').style.display = 'none';
+  document.getElementById('privacyPage').style.display = 'block';
+  window.scrollTo(0, 0);
+  history.pushState({}, '', '#privacy');
+}
+
+function showMain(e) {
+  if (e) e.preventDefault();
+  document.getElementById('privacyPage').style.display = 'none';
+  document.getElementById('mainPage').style.display = 'block';
+  window.scrollTo(0, 0);
+  history.pushState({}, '', '/');
+}
+
+// Handle direct URL visit to #privacy
+if (window.location.hash === '#privacy') {
+  showPrivacy();
+}
+
+window.addEventListener('popstate', () => {
+  if (window.location.hash === '#privacy') {
+    showPrivacy();
+  } else {
+    showMain();
+  }
+});
+
+
 </script>
+
+</div><!-- end mainPage -->
 
 <!-- ═══════════════════════════════════════════════════ -->
 <!-- PRIVACY POLICY PAGE (hidden by default)            -->
@@ -1432,7 +1467,7 @@ document.querySelectorAll('.stat-item').forEach((el, i) => {
 
 <!-- Privacy Nav -->
 <nav>
-  <a href="#" class="nav-logo" onclick="showMain()">
+  <a href="#" class="nav-logo" onclick="showMain(event)">
     <div class="nav-logo-mark">
       <svg viewBox="0 0 16 16" fill="none">
         <path d="M3 5l5 4 5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1442,7 +1477,7 @@ document.querySelectorAll('.stat-item').forEach((el, i) => {
     <span class="nav-logo-name">InboxZero</span>
   </a>
   <ul class="nav-links">
-    <li><a href="#" onclick="showMain()">← Back to home</a></li>
+    <li><a href="#" onclick="showMain(event)">← Back to home</a></li>
   </ul>
 </nav>
 
@@ -1626,7 +1661,7 @@ document.querySelectorAll('.stat-item').forEach((el, i) => {
 
 <!-- Privacy Footer -->
 <footer>
-  <a href="#" class="footer-logo" onclick="showMain()">
+  <a href="#" class="footer-logo" onclick="showMain(event)">
     <div class="nav-logo-mark">
       <svg viewBox="0 0 16 16" fill="none">
         <path d="M3 5l5 4 5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1636,7 +1671,7 @@ document.querySelectorAll('.stat-item').forEach((el, i) => {
     <span class="footer-logo-name">InboxZero</span>
   </a>
   <ul class="footer-links">
-    <li><a href="#" onclick="showMain()">← Back to home</a></li>
+    <li><a href="#" onclick="showMain(event)">← Back to home</a></li>
     <li><a href="mailto:hello@inboxzero.app">Contact</a></li>
   </ul>
   <div class="footer-copy">© 2026 InboxZero. All rights reserved.</div>
